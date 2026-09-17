@@ -67,3 +67,12 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# AeroSched - raw datasets
+data/raw/*.parquet
+data/raw/*.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
