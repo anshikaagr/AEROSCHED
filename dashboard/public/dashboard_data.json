@@ -1,0 +1,28 @@
+{
+  "airport": "EGLL",
+  "period": "July 2026",
+  "operations": {
+    "total": 18232,
+    "departures": 13912,
+    "arrivals": 4320
+  },
+  "runways": {
+    "09R/27L": {
+      "operations": 12217,
+      "utilization_percent": 15.626
+    },
+    "09L/27R": {
+      "operations": 6015,
+      "utilization_percent": 14.2517
+    }
+  },
+  "occupancy": {
+    "average_sec": 43.64,
+    "maximum_sec": 8300.0
+  },
+  "observation_period": {
+    "start": "2026-07-01 04:03:45",
+    "end": "2026-07-31 23:43:45"
+  },
+  "overall_utilization_percent": 14.9389
+}
