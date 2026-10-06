@@ -26,8 +26,131 @@ function RunwayCard({ runway, status, details }) {
   );
 }
 
+function AircraftQueue() {
+  const [flights, setFlights] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch("/aircraft_queue.json", { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            `Failed to load aircraft_queue.json: ${response.status}`
+          );
+        }
+
+        return response.json();
+      })
+      .then((json) => {
+        console.log("Aircraft queue loaded:", json.length, "records");
+        setFlights(json);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Aircraft queue error:", error);
+        setError(error.message);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="section">
+        <div className="info-card">
+          <h3>Loading Aircraft Queue...</h3>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="section">
+        <div className="info-card">
+          <h3>Unable to load Aircraft Queue</h3>
+          <p>{error}</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="section">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">AIRCRAFT OPERATIONS</p>
+          <h2>Aircraft Queue</h2>
+        </div>
+
+        <span className="live-badge">
+          ● {flights.length.toLocaleString()} RECORDS
+        </span>
+      </div>
+
+      <div className="info-card">
+        <h3>Historical EGLL Operations</h3>
+        <p>
+          Real runway operations from the July 2026 OPDI dataset.
+        </p>
+      </div>
+
+      <div className="queue-table-container">
+        <table className="queue-table">
+          <thead>
+            <tr>
+              <th>Flight</th>
+              <th>Aircraft</th>
+              <th>Operation</th>
+              <th>Runway</th>
+              <th>Entry Time</th>
+              <th>Occupancy</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {flights.slice(0, 100).map((flight, index) => (
+              <tr key={`${flight.flight_id}-${index}`}>
+                <td>{flight.flt_id || flight.flight_id}</td>
+
+                <td>
+                  {flight.aircraft_type || "Unknown"}
+                </td>
+
+                <td>
+                  <span
+                    className={`operation ${flight.operation.toLowerCase()}`}
+                  >
+                    {flight.operation}
+                  </span>
+                </td>
+
+                <td>{flight.runway}</td>
+
+                <td>
+                  {new Date(flight.entry_time).toLocaleString()}
+                </td>
+
+                <td>
+                  {Number(flight.occupancy_sec).toFixed(0)} s
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="queue-note">
+        Showing the first 100 records of{" "}
+        {flights.length.toLocaleString()} historical runway operations.
+      </p>
+    </section>
+  );
+}
+
 function App() {
   const [data, setData] = useState(null);
+  const [activePage, setActivePage] = useState("Overview");
 
   useEffect(() => {
     fetch("/dashboard_data.json")
@@ -55,27 +178,44 @@ function App() {
         </div>
 
         <nav>
-          <button className="nav-item active">
+          <button
+            className={`nav-item ${activePage === "Overview" ? "active" : ""}`}
+            onClick={() => setActivePage("Overview")}
+          >
             <span>▦</span>
             Overview
           </button>
 
-          <button className="nav-item">
+          <button
+            className={`nav-item ${
+              activePage === "Aircraft Queue" ? "active" : ""
+            }`}
+            onClick={() => setActivePage("Aircraft Queue")}
+          >
             <span>✈</span>
             Aircraft Queue
           </button>
 
-          <button className="nav-item">
+          <button
+            className={`nav-item ${activePage === "Runways" ? "active" : ""}`}
+            onClick={() => setActivePage("Runways")}
+          >
             <span>▤</span>
             Runways
           </button>
 
-          <button className="nav-item">
+          <button
+            className={`nav-item ${activePage === "Timeline" ? "active" : ""}`}
+            onClick={() => setActivePage("Timeline")}
+          >
             <span>◷</span>
             Timeline
           </button>
 
-          <button className="nav-item">
+          <button
+            className={`nav-item ${activePage === "Alerts" ? "active" : ""}`}
+            onClick={() => setActivePage("Alerts")}
+          >
             <span>⚡</span>
             Alerts
           </button>
@@ -108,7 +248,8 @@ function App() {
             <div className="date">{data.period}</div>
           </div>
         </header>
-
+        {activePage === "Overview" ? (
+  <>
         {/* Statistics */}
         <section className="stats-grid">
           <StatCard
@@ -230,6 +371,18 @@ function App() {
             </p>
           </div>
         </section>
+
+         </>
+) : activePage === "Aircraft Queue" ? (
+  <AircraftQueue />
+) : (
+  <section className="section">
+    <div className="info-card">
+      <h3>{activePage}</h3>
+      <p>This section will be implemented next.</p>
+    </div>
+  </section>
+)}
       </main>
     </div>
   );
