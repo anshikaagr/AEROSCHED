@@ -1,6 +1,7 @@
 import "./App.css";
+import "./polish.css";                    // new, must come after App.css
 import { useEffect, useState } from "react";
-
+import Intro from "./components/Intro";   // new
 function StatCard({ title, value, subtitle }) {
   return (
     <div className="stat-card">
@@ -26,6 +27,7 @@ function RunwayCard({ runway, status, details }) {
   );
 }
 
+
 function AircraftQueue() {
   const [flights, setFlights] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,53 +35,62 @@ function AircraftQueue() {
   const [search, setSearch] = useState("");
   const [operationFilter, setOperationFilter] = useState("all");
 
-  const filteredFlights = flights.filter((flight) => {
-    const query = search.toLowerCase();
-
-    const matchesSearch = [
-      flight.flt_id,
-      flight.flight_id,
-      flight.aircraft_type,
-      flight.runway,
-    ].some((value) =>
-      String(value ?? "").toLowerCase().includes(query)
-    );
-
-    const matchesOperation =
-      operationFilter === "all" ||
-      flight.operation === operationFilter;
-
-    return matchesSearch && matchesOperation;
-  });
   useEffect(() => {
     fetch("/aircraft_queue.json", { cache: "no-store" })
       .then((response) => {
         if (!response.ok) {
-          throw new Error(
-            `Failed to load aircraft_queue.json: ${response.status}`
-          );
+          throw new Error(`Failed to load queue: ${response.status}`);
         }
-
         return response.json();
       })
       .then((json) => {
-        console.log("Aircraft queue loaded:", json.length, "records");
-        setFlights(json);
+        setFlights(Array.isArray(json) ? json : []);
         setLoading(false);
       })
-      .catch((error) => {
-        console.error("Aircraft queue error:", error);
-        setError(error.message);
+      .catch((err) => {
+        setError(err.message);
         setLoading(false);
       });
   }, []);
 
+  const query = search.trim().toLowerCase();
+
+  const filteredFlights = flights
+    .filter((flight) => {
+      const searchable = [
+        flight.flt_id,
+        flight.flight_id,
+        flight.aircraft_type,
+        flight.runway,
+      ];
+
+      const matchesSearch = searchable.some((value) =>
+        String(value ?? "").toLowerCase().includes(query)
+      );
+
+      const operation = String(flight.operation ?? "").toLowerCase();
+      const matchesOperation =
+        operationFilter === "all" || operation === operationFilter;
+
+      return matchesSearch && matchesOperation;
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.entry_time).getTime() -
+        new Date(b.entry_time).getTime()
+    );
+
+  const runwayGroups = filteredFlights.reduce((groups, flight) => {
+    const runway = flight.runway || "Runway unavailable";
+    if (!groups[runway]) groups[runway] = [];
+    groups[runway].push(flight);
+    return groups;
+  }, {});
+
   if (loading) {
     return (
       <section className="section">
-        <div className="info-card">
-          <h3>Loading Aircraft Queue...</h3>
-        </div>
+        <div className="info-card"><h3>Loading flight queue...</h3></div>
       </section>
     );
   }
@@ -88,7 +99,7 @@ function AircraftQueue() {
     return (
       <section className="section">
         <div className="info-card">
-          <h3>Unable to load Aircraft Queue</h3>
+          <h3>Unable to load flight queue</h3>
           <p>{error}</p>
         </div>
       </section>
@@ -100,18 +111,19 @@ function AircraftQueue() {
       <div className="section-heading">
         <div>
           <p className="eyebrow">AIRCRAFT OPERATIONS</p>
-          <h2>Aircraft Queue</h2>
+          <h2>Flight Queue by Runway</h2>
         </div>
-
         <span className="live-badge">
-          ● {flights.length.toLocaleString()} RECORDS
+          {filteredFlights.length.toLocaleString()} FLIGHTS
         </span>
       </div>
 
       <div className="info-card">
-        <h3>Historical EGLL Operations</h3>
+        <h3>Runway Assignment Overview</h3>
         <p>
-          Real runway operations from the July 2026 OPDI dataset.
+          Historical EGLL operations grouped by recorded runway and ordered
+          by entry time. These records are not live assignments from the
+          C++ scheduler.
         </p>
       </div>
 
@@ -121,7 +133,7 @@ function AircraftQueue() {
           placeholder="Search flight, aircraft, or runway..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          aria-label="Search aircraft queue"
+          aria-label="Search flight queue"
         />
 
         <select
@@ -135,54 +147,95 @@ function AircraftQueue() {
         </select>
       </div>
 
-      <div className="queue-table-container">
-        <table className="queue-table">
-          <thead>
-            <tr>
-              <th>Flight</th>
-              <th>Aircraft</th>
-              <th>Operation</th>
-              <th>Runway</th>
-              <th>Entry Time</th>
-              <th>Occupancy</th>
-            </tr>
-          </thead>
+      {Object.keys(runwayGroups).length === 0 ? (
+        <div className="info-card">
+          <h3>No matching flights</h3>
+          <p>Try a different search or operation filter.</p>
+        </div>
+      ) : (
+        <div className="runway-queue-grid">
+          {Object.entries(runwayGroups).map(([runway, runwayFlights]) => (
+            <article className="runway-queue-card" key={runway}>
+              <div className="runway-queue-header">
+                <div>
+                  <p className="eyebrow">ASSIGNED RUNWAY</p>
+                  <h3>{runway}</h3>
+                </div>
+                <span className="live-badge">
+                  {runwayFlights.length} flights
+                </span>
+              </div>
 
-          <tbody>
-            {filteredFlights.slice(0, 100).map((flight, index) => (
-              <tr key={`${flight.flight_id}-${index}`}>
-                <td>{flight.flt_id || flight.flight_id}</td>
+              <div className="flight-queue-list">
+                {runwayFlights.slice(0, 50).map((flight, index) => {
+                  const operation = String(
+                    flight.operation ?? "unknown"
+                  ).toLowerCase();
 
-                <td>
-                  {flight.aircraft_type || "Unknown"}
-                </td>
+                  const timestamp = flight.entry_time
+                    ? new Date(flight.entry_time)
+                    : null;
 
-                <td>
-                  <span
-                    className={`operation ${flight.operation.toLowerCase()}`}
-                  >
-                    {flight.operation}
-                  </span>
-                </td>
+                  const validTime =
+                    timestamp && !Number.isNaN(timestamp.getTime());
 
-                <td>{flight.runway}</td>
+                  return (
+                    <div
+                      className="flight-queue-item"
+                      key={`${flight.flight_id ?? flight.flt_id ?? "flight"}-${index}`}
+                    >
+                      <div className="flight-queue-time">
+                        {validTime
+                          ? timestamp.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                          : "Time unavailable"}
+                      </div>
 
-                <td>
-                  {new Date(flight.entry_time).toLocaleString()}
-                </td>
+                      <div className="flight-queue-marker">
+                        <span />
+                      </div>
 
-                <td>
-                  {Number(flight.occupancy_sec).toFixed(0)} s
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                      <div className="flight-queue-details">
+                        <div className="flight-queue-top">
+                          <strong>
+                            {flight.flt_id || flight.flight_id || "Unknown flight"}
+                          </strong>
+                          <span className={`operation ${operation}`}>
+                            {operation}
+                          </span>
+                        </div>
+
+                        <p>{flight.aircraft_type || "Aircraft unknown"}</p>
+
+                        <small>
+                          Runway occupancy:{" "}
+                          {Number.isFinite(Number(flight.occupancy_sec)) &&
+                            flight.occupancy_sec !== null &&
+                            flight.occupancy_sec !== ""
+                            ? `${Number(flight.occupancy_sec).toFixed(0)} sec`
+                            : "Unavailable"}
+                        </small>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {runwayFlights.length > 50 && (
+                <p className="queue-note">
+                  Showing 50 of {runwayFlights.length} flights on this runway.
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
 
       <p className="queue-note">
-        Showing the first 100 records of{" "}
-        {flights.length.toLocaleString()} historical runway operations.
+        Historical data only. Queue order reflects recorded entry time,
+        not a verified operational schedule.
       </p>
     </section>
   );
@@ -496,8 +549,8 @@ function AlertsPage({ flights }) {
               {alert.level === "critical"
                 ? "!"
                 : alert.level === "warning"
-                ? "⚠"
-                : "i"}
+                  ? "⚠"
+                  : "i"}
             </div>
 
             <div className="alert-content">
@@ -559,15 +612,15 @@ function SchedulerComparison({ data }) {
     );
   }
 
-const fcfs = data.results.fcfs;
-const priority = data.results.priority;
+  const fcfs = data.results.fcfs;
+  const priority = data.results.priority;
 
   const emergencyReduction =
     fcfs.emergency_average_wait_sec > 0
       ? ((fcfs.emergency_average_wait_sec -
-          priority.emergency_average_wait_sec) /
-          fcfs.emergency_average_wait_sec) *
-        100
+        priority.emergency_average_wait_sec) /
+        fcfs.emergency_average_wait_sec) *
+      100
       : 0;
 
   const metrics = [
@@ -743,7 +796,20 @@ function App() {
   const [flights, setFlights] = useState([]);
   const [schedulerResults, setSchedulerResults] = useState(null);
   const [activePage, setActivePage] = useState("Overview");
+  const [introSeen] = useState(
+    () => sessionStorage.getItem("aerosched-intro") === "seen"
+  );
+  const [introPhase, setIntroPhase] = useState(introSeen ? "app" : "intro");
 
+  const intro = introPhase !== "app" && (
+    <Intro
+      onReveal={() => setIntroPhase("reveal")}
+      onDone={() => {
+        sessionStorage.setItem("aerosched-intro", "seen");
+        setIntroPhase("app");
+      }}
+    />
+  );
   useEffect(() => {
     fetch("/dashboard_data.json")
       .then((response) => response.json())
@@ -751,253 +817,260 @@ function App() {
       .catch((error) =>
         console.error("Failed to load dashboard data:", error)
       );
-      fetch("/aircraft_queue.json")
-    .then((response) => response.json())
-    .then((json) => setFlights(json))
-    .catch((error) =>
-      console.error("Failed to load aircraft data:", error)
-    );
+    fetch("/aircraft_queue.json")
+      .then((response) => response.json())
+      .then((json) => setFlights(json))
+      .catch((error) =>
+        console.error("Failed to load aircraft data:", error)
+      );
     fetch("/scheduler_results.json")
-  .then((response) => {
-    if (!response.ok) throw new Error("Scheduler results unavailable");
-    return response.json();
-  })
-  .then((json) => setSchedulerResults(json))
-  .catch((error) =>
-    console.error("Failed to load scheduler results:", error)
-  );
+      .then((response) => {
+        if (!response.ok) throw new Error("Scheduler results unavailable");
+        return response.json();
+      })
+      .then((json) => setSchedulerResults(json))
+      .catch((error) =>
+        console.error("Failed to load scheduler results:", error)
+      );
   }, []);
 
   if (!data) {
-    return <div className="loading">Loading AeroSched data...</div>;
+    return (
+      <>
+        <div className="loading">Loading AeroSched data...</div>
+        {intro}
+      </>
+    );
   }
 
   return (
-    <div className="app">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="logo">
-          <div className="logo-mark">✈</div>
-          <div>
-            <h2>AeroSched</h2>
-            <span>RUNWAY CONTROL</span>
-          </div>
-        </div>
-
-        <nav>
-          <button
-            className={`nav-item ${activePage === "Overview" ? "active" : ""}`}
-            onClick={() => setActivePage("Overview")}
-          >
-            <span>▦</span>
-            Overview
-          </button>
-
-          <button
-            className={`nav-item ${
-              activePage === "Aircraft Queue" ? "active" : ""
-            }`}
-            onClick={() => setActivePage("Aircraft Queue")}
-          >
-            <span>✈</span>
-            Aircraft Queue
-          </button>
-
-          <button
-            className={`nav-item ${activePage === "Runways" ? "active" : ""}`}
-            onClick={() => setActivePage("Runways")}
-          >
-            <span>▤</span>
-            Runways
-          </button>
-
-          <button
-            className={`nav-item ${activePage === "Timeline" ? "active" : ""}`}
-            onClick={() => setActivePage("Timeline")}
-          >
-            <span>◷</span>
-            Timeline
-          </button>
-
-          <button
-            className={`nav-item ${activePage === "Alerts" ? "active" : ""}`}
-            onClick={() => setActivePage("Alerts")}
-          >
-            <span>⚡</span>
-            Alerts
-          </button>
-        </nav>
-
-        <div className="sidebar-bottom">
-          <div className="system-status">
-            <span className="status-dot"></span>
-            System Online
-          </div>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main className="main">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">AIRPORT CONTROL CENTER</p>
-            <h1>
-              London Heathrow <span>EGLL</span>
-            </h1>
-          </div>
-
-          <div className="header-right">
-            <div className="traffic">
-              <span className="traffic-dot"></span>
-              NORMAL TRAFFIC
-            </div>
-
-            <div className="date">{data.period}</div>
-          </div>
-        </header>
-        {activePage === "Overview" ? (
-  <>
-        {/* Statistics */}
-        <section className="stats-grid">
-          <StatCard
-            title="RUNWAY OPERATIONS"
-            value={data.operations.total.toLocaleString()}
-            subtitle="Recorded operations"
-          />
-
-          <StatCard
-            title="DEPARTURES"
-            value={data.operations.departures.toLocaleString()}
-            subtitle={`${(
-              (data.operations.departures / data.operations.total) *
-              100
-            ).toFixed(1)}% of operations`}
-          />
-
-          <StatCard
-            title="ARRIVALS"
-            value={data.operations.arrivals.toLocaleString()}
-            subtitle={`${(
-              (data.operations.arrivals / data.operations.total) *
-              100
-            ).toFixed(1)}% of operations`}
-          />
-
-          <StatCard
-            title="ACTIVE RUNWAYS"
-            value="2 / 2"
-            subtitle="All runways available"
-          />
-        </section>
-
-        {/* Runways */}
-        <section className="section">
-          <div className="section-heading">
+    <>
+      <div className={`app ${!introSeen && introPhase !== "intro" ? "app-enter" : ""}`}>
+        {/* Sidebar */}
+        <aside className="sidebar">
+          <div className="logo">
+            <div className="logo-mark">✈</div>
             <div>
-              <p className="eyebrow">RESOURCE STATUS</p>
-              <h2>Runway Status</h2>
+              <h2>AeroSched</h2>
+              <span>RUNWAY CONTROL</span>
             </div>
-
-            <span className="live-badge">● LIVE DATA</span>
           </div>
 
-          <div className="runway-grid">
-            <RunwayCard
-              runway="09R / 27L"
-              status="Available"
-              details={`${data.runways["09R/27L"].operations.toLocaleString()} recorded operations • ${data.runways[
-                "09R/27L"
-              ].utilization_percent.toFixed(2)}% utilization`}
-            />
+          <nav>
+            <button
+              className={`nav-item ${activePage === "Overview" ? "active" : ""}`}
+              onClick={() => setActivePage("Overview")}
+            >
+              <span>▦</span>
+              Overview
+            </button>
 
-            <RunwayCard
-              runway="09L / 27R"
-              status="Available"
-              details={`${data.runways["09L/27R"].operations.toLocaleString()} recorded operations • ${data.runways[
-                "09L/27R"
-              ].utilization_percent.toFixed(2)}% utilization`}
-            />
+            <button
+              className={`nav-item ${activePage === "Aircraft Queue" ? "active" : ""
+                }`}
+              onClick={() => setActivePage("Aircraft Queue")}
+            >
+              <span>✈</span>
+              Aircraft Queue
+            </button>
+
+            <button
+              className={`nav-item ${activePage === "Runways" ? "active" : ""}`}
+              onClick={() => setActivePage("Runways")}
+            >
+              <span>▤</span>
+              Runways
+            </button>
+
+            <button
+              className={`nav-item ${activePage === "Timeline" ? "active" : ""}`}
+              onClick={() => setActivePage("Timeline")}
+            >
+              <span>◷</span>
+              Timeline
+            </button>
+
+            <button
+              className={`nav-item ${activePage === "Alerts" ? "active" : ""}`}
+              onClick={() => setActivePage("Alerts")}
+            >
+              <span>⚡</span>
+              Alerts
+            </button>
+          </nav>
+
+          <div className="sidebar-bottom">
+            <div className="system-status">
+              <span className="status-dot"></span>
+              System Online
+            </div>
           </div>
-        </section>
+        </aside>
 
-        {/* Performance */}
-        <section className="section">
-          <div className="section-heading">
+        {/* Main */}
+        <main className="main">
+          <header className="topbar">
             <div>
-              <p className="eyebrow">PERFORMANCE</p>
-              <h2>Runway Metrics</h2>
-            </div>
-          </div>
-
-          <div className="metrics-grid">
-            <div className="metric-card">
-              <span>AVG. OCCUPANCY</span>
-              <strong>{data.occupancy.average_sec.toFixed(2)} s</strong>
-              <small>Observed runway occupancy</small>
+              <p className="eyebrow">AIRPORT CONTROL CENTER</p>
+              <h1>
+                London Heathrow <span>EGLL</span>
+              </h1>
             </div>
 
-            <div className="metric-card">
-              <span>MAX. OCCUPANCY</span>
-              <strong>
-                {data.occupancy.maximum_sec.toLocaleString()} s
-              </strong>
-              <small>Longest observed operation</small>
+            <div className="header-right">
+              <div className="traffic">
+                <span className="traffic-dot"></span>
+                NORMAL TRAFFIC
+              </div>
+
+              <div className="date">{data.period}</div>
             </div>
+          </header>
+          {activePage === "Overview" ? (
+            <>
+              {/* Statistics */}
+              <section className="stats-grid">
+                <StatCard
+                  title="RUNWAY OPERATIONS"
+                  value={data.operations.total.toLocaleString()}
+                  subtitle="Recorded operations"
+                />
 
-            <div className="metric-card">
-              <span>RUNWAY UTILIZATION</span>
-              <strong>{data.overall_utilization_percent.toFixed(2)}%</strong>
-              <small>Across both EGLL runways</small>
-            </div>
+                <StatCard
+                  title="DEPARTURES"
+                  value={data.operations.departures.toLocaleString()}
+                  subtitle={`${(
+                    (data.operations.departures / data.operations.total) *
+                    100
+                  ).toFixed(1)}% of operations`}
+                />
 
-            <div className="metric-card">
-              <span>OBSERVATION PERIOD</span>
-              <strong>31 Days</strong>
-              <small>{data.period}</small>
-            </div>
-          </div>
-        </section>
+                <StatCard
+                  title="ARRIVALS"
+                  value={data.operations.arrivals.toLocaleString()}
+                  subtitle={`${(
+                    (data.operations.arrivals / data.operations.total) *
+                    100
+                  ).toFixed(1)}% of operations`}
+                />
 
-        {/* Bottom information */}
-        <section className="bottom-grid">
-          <div className="info-card">
-            <p className="eyebrow">DATASET</p>
-            <h3>OPDI — July 2026</h3>
-            <p>
-              Real flight and runway event data processed for
-              AeroSched scheduling experiments.
-            </p>
-          </div>
+                <StatCard
+                  title="ACTIVE RUNWAYS"
+                  value="2 / 2"
+                  subtitle="All runways available"
+                />
+              </section>
 
-          <div className="info-card">
-            <p className="eyebrow">SCHEDULER</p>
-            <h3>C++ scheduler integrated</h3>
-            <p>
-FCFS and Priority scheduling compared using a congested synthetic workload.
-            </p>
-          </div>
-        </section>
-        <SchedulerComparison data={schedulerResults} />
+              {/* Runways */}
+              <section className="section">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">RESOURCE STATUS</p>
+                    <h2>Runway Status</h2>
+                  </div>
 
-         </>
-) : activePage === "Aircraft Queue" ? (
-  <AircraftQueue />
- ) : activePage === "Runways" ? (
-  <RunwaysPage data={data} flights={flights} />
-  ) : activePage === "Timeline" ? (
-  <TimelinePage flights={flights} />
-  ) : activePage === "Alerts" ? (
-  <AlertsPage flights={flights} />
-) : (
-  <section className="section">
-    <div className="info-card">
-      <h3>{activePage}</h3>
-      <p>This section will be implemented next.</p>
-    </div>
-  </section>
-)}
-      </main>
-    </div>
+                  <span className="live-badge">● LIVE DATA</span>
+                </div>
+
+                <div className="runway-grid">
+                  <RunwayCard
+                    runway="09R / 27L"
+                    status="Available"
+                    details={`${data.runways["09R/27L"].operations.toLocaleString()} recorded operations • ${data.runways[
+                      "09R/27L"
+                    ].utilization_percent.toFixed(2)}% utilization`}
+                  />
+
+                  <RunwayCard
+                    runway="09L / 27R"
+                    status="Available"
+                    details={`${data.runways["09L/27R"].operations.toLocaleString()} recorded operations • ${data.runways[
+                      "09L/27R"
+                    ].utilization_percent.toFixed(2)}% utilization`}
+                  />
+                </div>
+              </section>
+
+              {/* Performance */}
+              <section className="section">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">PERFORMANCE</p>
+                    <h2>Runway Metrics</h2>
+                  </div>
+                </div>
+
+                <div className="metrics-grid">
+                  <div className="metric-card">
+                    <span>AVG. OCCUPANCY</span>
+                    <strong>{data.occupancy.average_sec.toFixed(2)} s</strong>
+                    <small>Observed runway occupancy</small>
+                  </div>
+
+                  <div className="metric-card">
+                    <span>MAX. OCCUPANCY</span>
+                    <strong>
+                      {data.occupancy.maximum_sec.toLocaleString()} s
+                    </strong>
+                    <small>Longest observed operation</small>
+                  </div>
+
+                  <div className="metric-card">
+                    <span>RUNWAY UTILIZATION</span>
+                    <strong>{data.overall_utilization_percent.toFixed(2)}%</strong>
+                    <small>Across both EGLL runways</small>
+                  </div>
+
+                  <div className="metric-card">
+                    <span>OBSERVATION PERIOD</span>
+                    <strong>31 Days</strong>
+                    <small>{data.period}</small>
+                  </div>
+                </div>
+              </section>
+
+              {/* Bottom information */}
+              <section className="bottom-grid">
+                <div className="info-card">
+                  <p className="eyebrow">DATASET</p>
+                  <h3>OPDI — July 2026</h3>
+                  <p>
+                    Real flight and runway event data processed for
+                    AeroSched scheduling experiments.
+                  </p>
+                </div>
+
+                <div className="info-card">
+                  <p className="eyebrow">SCHEDULER</p>
+                  <h3>C++ scheduler integrated</h3>
+                  <p>
+                    FCFS and Priority scheduling compared using a congested synthetic workload.
+                  </p>
+                </div>
+              </section>
+              <SchedulerComparison data={schedulerResults} />
+
+            </>
+          ) : activePage === "Aircraft Queue" ? (
+            <AircraftQueue />
+          ) : activePage === "Runways" ? (
+            <RunwaysPage data={data} flights={flights} />
+          ) : activePage === "Timeline" ? (
+            <TimelinePage flights={flights} />
+          ) : activePage === "Alerts" ? (
+            <AlertsPage flights={flights} />
+          ) : (
+            <section className="section">
+              <div className="info-card">
+                <h3>{activePage}</h3>
+                <p>This section will be implemented next.</p>
+              </div>
+            </section>
+          )}
+        </main>
+      </div>
+      {intro}
+    </>
   );
 }
 

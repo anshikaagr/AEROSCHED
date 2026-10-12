@@ -76,3 +76,5 @@ data/raw/*.csv
 __pycache__/
 *.pyc
 .venv/scheduler/aerosched
+node_modules/
+scheduler/aerosched

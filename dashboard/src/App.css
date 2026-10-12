@@ -1008,3 +1008,117 @@ nav {
     justify-content: flex-start;
   }
 }
+
+
+.runway-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.runway-queue-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.runway-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.runway-queue-header h3 {
+  margin: 5px 0 0;
+  color: #172033;
+  font-size: 21px;
+}
+
+.flight-queue-list {
+  padding-top: 8px;
+}
+
+.flight-queue-item {
+  display: grid;
+  grid-template-columns: 64px 14px minmax(0, 1fr);
+  gap: 10px;
+  padding: 15px 0;
+}
+
+.flight-queue-time {
+  padding-top: 2px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.flight-queue-marker {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.flight-queue-marker::before {
+  position: absolute;
+  top: 8px;
+  bottom: -20px;
+  width: 2px;
+  background: #dbe5f0;
+  content: "";
+}
+
+.flight-queue-item:last-child .flight-queue-marker::before {
+  display: none;
+}
+
+.flight-queue-marker span {
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.flight-queue-details {
+  min-width: 0;
+}
+
+.flight-queue-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flight-queue-top strong {
+  overflow-wrap: anywhere;
+  color: #172033;
+  font-size: 14px;
+}
+
+.flight-queue-details p {
+  margin: 6px 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.flight-queue-details small {
+  color: #64748b;
+  font-size: 12px;
+}
+
+@media (max-width: 800px) {
+  .runway-queue-grid {
+    grid-template-columns: 1fr;
+  }
+}

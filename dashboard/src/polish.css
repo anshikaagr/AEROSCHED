@@ -1,0 +1,567 @@
+/* =====================================================================
+   AeroSched polish layer
+   Append this to the END of your existing dashboard CSS (or import it
+   after it). It only adds visual detail. No markup or data changes.
+   ===================================================================== */
+
+:root {
+  --gold: #e9b949;
+  --ink: #101820;
+  --ink-2: #17232d;
+  --line: #e2e6e9;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numbers line up and don't jitter */
+.stat-card h2,
+.metric-card strong,
+.runway-main-stat strong,
+.runway-stat-grid strong,
+.queue-table td,
+.alert-summary strong,
+.scheduler-hero-value,
+.scheduler-policy-number {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Main canvas: faint runway-chart grid ---------- */
+.main {
+  background-image:
+    linear-gradient(rgba(23, 32, 51, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 32, 51, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+  min-height: 100vh;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  background:
+    radial-gradient(120% 60% at 0% 0%, rgba(233, 185, 73, 0.1), transparent 60%),
+    linear-gradient(180deg, #121c26 0%, #0d141b 100%);
+  border-right: 1px solid #1c2933;
+}
+
+.logo-mark {
+  box-shadow: 0 6px 20px rgba(233, 185, 73, 0.3);
+}
+
+.logo span {
+  font-size: 9px;
+}
+
+.nav-item {
+  position: relative;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.nav-item:hover:not(.active) {
+  transform: translateX(2px);
+}
+
+.nav-item.active {
+  box-shadow: 0 8px 22px rgba(233, 185, 73, 0.22);
+}
+
+.nav-item:focus-visible,
+.sidebar button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Little runway strip above the system status */
+.sidebar-bottom::before {
+  content: "";
+  display: block;
+  height: 4px;
+  margin: 0 8px 14px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(90deg, #2a3945 0 14px, transparent 14px 22px);
+  opacity: 0.8;
+}
+
+/* Live pulse on status dots */
+.status-dot,
+.traffic-dot {
+  position: relative;
+}
+
+.status-dot::after,
+.traffic-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: aero-pulse 2.2s ease-out infinite;
+}
+
+@keyframes aero-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+
+/* ---------- Header ---------- */
+.topbar {
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+/* Gold tab marking the airport you're viewing */
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 72px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--gold);
+}
+
+.topbar h1 {
+  letter-spacing: -0.02em;
+}
+
+.topbar h1 span {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid #d5dbe1;
+  border-radius: 6px;
+  background: #fff;
+  vertical-align: 3px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.traffic {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e8f6ed;
+  border: 1px solid #cdebd8;
+}
+
+/* ---------- Cards: shared feel ---------- */
+.stat-card,
+.runway-card,
+.info-card,
+.runway-detail-card,
+.alert-summary div,
+.alert-card,
+.timeline-card {
+  box-shadow: 0 1px 2px rgba(16, 24, 32, 0.04), 0 8px 24px -12px rgba(16, 24, 32, 0.08);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.stat-card,
+.runway-card,
+.runway-detail-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card:hover,
+.runway-card:hover,
+.runway-detail-card:hover {
+  transform: translateY(-2px);
+  border-color: #d3d9de;
+  box-shadow: 0 2px 4px rgba(16, 24, 32, 0.05), 0 18px 36px -16px rgba(16, 24, 32, 0.18);
+}
+
+/* Gold edge that draws in on hover */
+.stat-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 3px;
+  width: 100%;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s ease;
+}
+
+.stat-card:hover::before {
+  transform: scaleX(1);
+}
+
+/* ---------- Runway cards: a mini runway along the bottom ---------- */
+.runway-card {
+  padding-bottom: 30px;
+}
+
+.runway-card::after,
+.runway-detail-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  background:
+    repeating-linear-gradient(90deg, #f3f5f7 0 16px, transparent 16px 30px) center / 100% 2px no-repeat,
+    var(--ink-2);
+}
+
+.runway-card:hover::after,
+.runway-detail-card:hover::after {
+  animation: aero-dash 1.2s linear infinite;
+}
+
+@keyframes aero-dash {
+  to {
+    background-position: 30px center, 0 0;
+  }
+}
+
+.runway-detail-card {
+  padding-bottom: 32px;
+}
+
+.runway-header h3 {
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Dark metric cards ---------- */
+.metric-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #1b2a36 0%, #131e27 100%);
+  border: 1px solid #22323e;
+  box-shadow: 0 10px 28px -14px rgba(16, 24, 32, 0.6);
+}
+
+.metric-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--gold);
+}
+
+.metric-card::after {
+  content: "";
+  position: absolute;
+  right: -30px;
+  top: -30px;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(233, 185, 73, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+/* ---------- Section headings ---------- */
+.section-heading h2 {
+  letter-spacing: -0.015em;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #e8f6ed;
+}
+
+/* ---------- Aircraft queue ---------- */
+.queue-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0 16px;
+}
+
+.queue-filters input {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: #526174;
+  font-size: 14px;
+  background: #f4f6f8;
+}
+
+/* Search + filter (these were unstyled browser defaults) */
+.main input[type="text"],
+.main input[type="search"],
+.main input:not([type]),
+.main select {
+  font: inherit;
+  font-size: 13px;
+  color: #1f2937;
+  background: #fff;
+  border: 1px solid #d5dbe1;
+  border-radius: 10px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.main input[type="text"]::placeholder,
+.main input[type="search"]::placeholder,
+.main input:not([type])::placeholder {
+  color: #9aa5ae;
+}
+
+.main input[type="text"]:focus,
+.main input[type="search"]:focus,
+.main input:not([type]):focus,
+.main select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px rgba(233, 185, 73, 0.2);
+}
+
+.main select {
+  cursor: pointer;
+}
+
+.queue-table-container {
+  box-shadow: 0 1px 2px rgba(16, 24, 32, 0.04), 0 8px 24px -12px rgba(16, 24, 32, 0.08);
+  max-height: 62vh;
+  overflow-y: auto;
+}
+
+.queue-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.queue-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.queue-table tbody tr:hover {
+  background: #fff9ea;
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.queue-table td:first-child {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.operation {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.operation.departure::before {
+  content: "↗";
+}
+
+.operation.arrival::before {
+  content: "↘";
+}
+
+/* ---------- Timeline ---------- */
+.timeline-dot {
+  box-shadow: 0 0 0 4px rgba(240, 189, 63, 0.22);
+}
+
+.timeline-item:hover .timeline-dot {
+  box-shadow: 0 0 0 6px rgba(240, 189, 63, 0.3);
+}
+
+.timeline-content {
+  transition: padding-left 0.2s ease;
+}
+
+.timeline-item:hover .timeline-content {
+  padding-left: 6px;
+}
+
+/* ---------- Alerts ---------- */
+.alert-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.alert-card:hover {
+  transform: translateX(3px);
+}
+
+/* ---------- Scrollbars ---------- */
+.queue-table-container::-webkit-scrollbar,
+.main::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.queue-table-container::-webkit-scrollbar-thumb {
+  background: #cfd6dc;
+  border-radius: 10px;
+  border: 2px solid #fff;
+}
+
+.queue-table-container::-webkit-scrollbar-thumb:hover {
+  background: #b5bec6;
+}
+
+::selection {
+  background: rgba(233, 185, 73, 0.4);
+}
+
+/* ---------- Entrance after the intro: one orchestrated reveal ---------- */
+.app.app-enter .sidebar {
+  animation: aero-sidebar-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.app.app-enter .main {
+  animation: aero-main-in 1s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes aero-sidebar-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes aero-main-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 750px) {
+  .topbar::after {
+    width: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* =====================================================================
+   Flight Queue by Runway (new AircraftQueue layout)
+   ===================================================================== */
+.runway-queue-card {
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 28px;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.runway-queue-card:hover {
+  transform: translateY(-2px);
+  border-color: #d3d9de;
+  box-shadow: 0 2px 4px rgba(16, 24, 32, 0.05), 0 18px 36px -16px rgba(16, 24, 32, 0.18);
+}
+
+/* Mini runway strip along the bottom, same as the runway cards */
+.runway-queue-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  background:
+    repeating-linear-gradient(90deg, #f3f5f7 0 16px, transparent 16px 30px) center / 100% 2px no-repeat,
+    var(--ink-2);
+}
+
+.runway-queue-header {
+  position: relative;
+}
+
+.runway-queue-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 56px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--gold);
+}
+
+.runway-queue-header h3 {
+  letter-spacing: -0.015em;
+}
+
+/* Long lists scroll inside the card instead of stretching the page */
+.flight-queue-list {
+  max-height: 640px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.flight-queue-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.flight-queue-list::-webkit-scrollbar-thumb {
+  background: #cfd6dc;
+  border-radius: 8px;
+}
+
+.flight-queue-item {
+  border-radius: 10px;
+  transition: background 0.15s ease;
+}
+
+.flight-queue-item:hover {
+  background: #fff9ea;
+}
+
+.flight-queue-time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Marker dot takes the colour of the operation */
+.flight-queue-item:has(.operation.departure) .flight-queue-marker span {
+  border-color: #1769aa;
+}
+
+.flight-queue-item:has(.operation.arrival) .flight-queue-marker span {
+  border-color: #287a45;
+}
+
+.flight-queue-item:hover .flight-queue-marker span {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.flight-queue-top strong {
+  letter-spacing: 0.02em;
+}
+
+.operation {
+  text-transform: capitalize;
+}

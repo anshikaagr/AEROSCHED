@@ -1,0 +1,268 @@
+/* ---------- AeroSched takeoff intro ---------- */
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background: #0b1020;
+  color: #fff;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  border-bottom: 4px solid #e9b949;
+  transition: transform 1s cubic-bezier(0.76, 0, 0.24, 1);
+  will-change: transform;
+}
+
+/* The curtain lifts to reveal the dashboard */
+.intro.leaving {
+  transform: translateY(-101%);
+  pointer-events: none;
+}
+
+.intro-scene,
+.intro-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.intro-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(5, 8, 18, 0.55) 100%),
+    linear-gradient(to top, rgba(5, 8, 18, 0.75), transparent 38%),
+    linear-gradient(to bottom, rgba(5, 8, 18, 0.55), transparent 22%);
+}
+
+/* Brand, top left */
+.intro-brand {
+  position: absolute;
+  top: 28px;
+  left: 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: intro-in 0.8s 0.2s both ease-out;
+}
+
+.intro-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #e9b949;
+  color: #101820;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 24px rgba(233, 185, 73, 0.35);
+}
+
+.intro-brand strong {
+  display: block;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+
+.intro-brand span {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+}
+
+/* Telemetry, top right */
+.intro-telemetry {
+  position: absolute;
+  top: 28px;
+  right: 32px;
+  display: flex;
+  gap: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  animation: intro-in 0.8s 0.4s both ease-out;
+}
+
+.intro-telemetry span {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.intro-telemetry strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 600;
+  min-width: 86px;
+}
+
+.intro-telemetry b {
+  font-weight: 600;
+}
+
+/* Title block, bottom left */
+.intro-title {
+  position: absolute;
+  left: 32px;
+  bottom: 56px;
+  max-width: min(560px, calc(100% - 64px));
+  animation: intro-in 1s 0.6s both ease-out;
+}
+
+.intro-title h1 {
+  margin: 0;
+  font-size: clamp(44px, 7vw, 88px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.intro-title p {
+  margin: 14px 0 0;
+  font-size: clamp(13px, 1.4vw, 16px);
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.5;
+}
+
+.intro-stage {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  min-height: 26px;
+}
+
+.intro-stage em {
+  font-style: normal;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #e9b949;
+  color: #101820;
+  animation: intro-swap 0.35s ease-out both;
+}
+
+.intro-stage span {
+  animation: intro-swap 0.35s ease-out both;
+}
+
+/* Skip button, bottom right */
+.intro-skip {
+  position: absolute;
+  right: 32px;
+  bottom: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(16, 24, 32, 0.45);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.intro-skip:hover {
+  background: rgba(233, 185, 73, 0.2);
+  border-color: #e9b949;
+}
+
+.intro-skip:focus-visible {
+  outline: 2px solid #e9b949;
+  outline-offset: 3px;
+}
+
+.intro-skip kbd {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Progress line, along the bottom */
+.intro-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.intro-progress i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #e9b949;
+  animation-name: intro-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes intro-progress {
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes intro-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes intro-swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .intro-brand,
+  .intro-telemetry {
+    top: 18px;
+  }
+  .intro-brand {
+    left: 18px;
+  }
+  .intro-telemetry {
+    right: 18px;
+    gap: 16px;
+  }
+  .intro-telemetry strong {
+    font-size: 17px;
+    min-width: 64px;
+  }
+  .intro-title {
+    left: 18px;
+    bottom: 96px;
+  }
+  .intro-skip {
+    right: 18px;
+    bottom: 28px;
+  }
+  .intro-skip kbd {
+    display: none;
+  }
+}
