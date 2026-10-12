@@ -1,0 +1,31 @@
+AeroSched — Congested Workload Comparison
+Test: 500 flights with requests clustered at 2026-07-01 07:00:00
+Runway scheduling: FCFS vs Priority
+
+FCFS
+- Average waiting time: 4718.46 seconds
+- Maximum waiting time: 10515 seconds
+- Emergency flights: 7
+- Emergency average wait: 6252.86 seconds
+- Emergency maximum wait: 10125 seconds
+- Non-emergency average wait: 4696.67 seconds
+- Non-emergency maximum wait: 10515 seconds
+- Throughput: 170.78 flights/hour
+- Aggregate runway utilization: 99.91%
+
+Priority
+- Average waiting time: 5073.92 seconds
+- Maximum waiting time: 10480 seconds
+- Emergency flights: 7
+- Emergency average wait: 17.86 seconds
+- Emergency maximum wait: 40 seconds
+- Non-emergency average wait: 5145.71 seconds
+- Non-emergency maximum wait: 10480 seconds
+- Throughput: 170.29 flights/hour
+- Aggregate runway utilization: 99.62%
+
+Interpretation
+In this synthetic congested test, priority scheduling substantially reduced
+emergency-flight waiting time, while increasing average non-emergency and
+overall waiting time. This is a simulation result, not evidence of operational
+airport performance or safety.

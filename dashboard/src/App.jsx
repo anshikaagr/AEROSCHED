@@ -30,7 +30,27 @@ function AircraftQueue() {
   const [flights, setFlights] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState("");
+  const [operationFilter, setOperationFilter] = useState("all");
 
+  const filteredFlights = flights.filter((flight) => {
+    const query = search.toLowerCase();
+
+    const matchesSearch = [
+      flight.flt_id,
+      flight.flight_id,
+      flight.aircraft_type,
+      flight.runway,
+    ].some((value) =>
+      String(value ?? "").toLowerCase().includes(query)
+    );
+
+    const matchesOperation =
+      operationFilter === "all" ||
+      flight.operation === operationFilter;
+
+    return matchesSearch && matchesOperation;
+  });
   useEffect(() => {
     fetch("/aircraft_queue.json", { cache: "no-store" })
       .then((response) => {
@@ -95,6 +115,26 @@ function AircraftQueue() {
         </p>
       </div>
 
+      <div className="queue-filters">
+        <input
+          type="search"
+          placeholder="Search flight, aircraft, or runway..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          aria-label="Search aircraft queue"
+        />
+
+        <select
+          value={operationFilter}
+          onChange={(event) => setOperationFilter(event.target.value)}
+          aria-label="Filter operation"
+        >
+          <option value="all">All operations</option>
+          <option value="arrival">Arrivals</option>
+          <option value="departure">Departures</option>
+        </select>
+      </div>
+
       <div className="queue-table-container">
         <table className="queue-table">
           <thead>
@@ -109,7 +149,7 @@ function AircraftQueue() {
           </thead>
 
           <tbody>
-            {flights.slice(0, 100).map((flight, index) => (
+            {filteredFlights.slice(0, 100).map((flight, index) => (
               <tr key={`${flight.flight_id}-${index}`}>
                 <td>{flight.flt_id || flight.flight_id}</td>
 
@@ -500,9 +540,79 @@ function AlertsPage({ flights }) {
   );
 }
 
+function SchedulerComparison({ data }) {
+  if (!data) {
+    return (
+      <section className="section">
+        <h2>Scheduler Comparison</h2>
+        <p>Loading simulation results...</p>
+      </section>
+    );
+  }
+
+  const fcfs = data.results.fcfs;
+  const priority = data.results.priority;
+
+  const formatWait = (seconds) =>
+    `${Number(seconds).toLocaleString(undefined, {
+      maximumFractionDigits: 2,
+    })} s`;
+
+  const metrics = [
+    ["Average wait", "average_wait_sec", formatWait],
+    ["Maximum wait", "maximum_wait_sec", formatWait],
+    ["Emergency average wait", "emergency_average_wait_sec", formatWait],
+    ["Non-emergency average wait", "non_emergency_average_wait_sec", formatWait],
+    ["Throughput", "throughput_flights_per_hour", (v) => `${v} flights/hr`],
+    ["Runway utilization", "runway_utilization_percent", (v) => `${v}%`],
+  ];
+
+  return (
+    <section className="section">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">SIMULATION RESULTS</p>
+          <h2>Scheduler Comparison</h2>
+          <p>{data.scenario}</p>
+        </div>
+      </div>
+
+      <p>{data.warning}</p>
+
+      <div className="metrics-grid">
+        {metrics.map(([label, key, format]) => (
+          <div className="metric-card" key={key}>
+            <span>{label}</span>
+            <p>FCFS</p>
+            <strong>{format(fcfs[key])}</strong>
+            <p>Priority</p>
+            <strong>{format(priority[key])}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="info-card">
+        <h3>Emergency response</h3>
+        <p>
+          FCFS emergency average wait:{" "}
+          <strong>{formatWait(fcfs.emergency_average_wait_sec)}</strong>
+        </p>
+        <p>
+          Priority emergency average wait:{" "}
+          <strong>{formatWait(priority.emergency_average_wait_sec)}</strong>
+        </p>
+        <p>
+          Emergency flights in this test: {priority.emergency_count}
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [data, setData] = useState(null);
   const [flights, setFlights] = useState([]);
+  const [schedulerResults, setSchedulerResults] = useState(null);
   const [activePage, setActivePage] = useState("Overview");
 
   useEffect(() => {
@@ -518,6 +628,15 @@ function App() {
     .catch((error) =>
       console.error("Failed to load aircraft data:", error)
     );
+    fetch("/scheduler_results.json")
+  .then((response) => {
+    if (!response.ok) throw new Error("Scheduler results unavailable");
+    return response.json();
+  })
+  .then((json) => setSchedulerResults(json))
+  .catch((error) =>
+    console.error("Failed to load scheduler results:", error)
+  );
   }, []);
 
   if (!data) {
@@ -730,6 +849,7 @@ function App() {
             </p>
           </div>
         </section>
+        <SchedulerComparison data={schedulerResults} />
 
          </>
 ) : activePage === "Aircraft Queue" ? (

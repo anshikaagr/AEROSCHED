@@ -1,0 +1,30 @@
+{
+  "title": "Scheduler Comparison",
+  "scenario": "Congested test \u2014 all 500 requests clustered at one time",
+  "source": "C++ scheduler simulation",
+  "warning": "Synthetic stress test; results are not a prediction of real-world airport performance.",
+  "results": {
+    "fcfs": {
+      "average_wait_sec": 4718.46,
+      "maximum_wait_sec": 10515.0,
+      "emergency_count": 7.0,
+      "emergency_average_wait_sec": 6252.86,
+      "emergency_maximum_wait_sec": 10125.0,
+      "non_emergency_average_wait_sec": 4696.67,
+      "non_emergency_maximum_wait_sec": 10515.0,
+      "throughput_flights_per_hour": 170.78,
+      "runway_utilization_percent": 99.91
+    },
+    "priority": {
+      "average_wait_sec": 5073.92,
+      "maximum_wait_sec": 10480.0,
+      "emergency_count": 7.0,
+      "emergency_average_wait_sec": 17.86,
+      "emergency_maximum_wait_sec": 40.0,
+      "non_emergency_average_wait_sec": 5145.71,
+      "non_emergency_maximum_wait_sec": 10480.0,
+      "throughput_flights_per_hour": 170.29,
+      "runway_utilization_percent": 99.62
+    }
+  }
+}
