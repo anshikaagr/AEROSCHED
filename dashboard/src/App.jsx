@@ -540,71 +540,200 @@ function AlertsPage({ flights }) {
   );
 }
 
+
 function SchedulerComparison({ data }) {
-  if (!data) {
+  if (!data?.results?.fcfs || !data?.results?.priority) {
     return (
-      <section className="section">
-        <h2>Scheduler Comparison</h2>
-        <p>Loading simulation results...</p>
+      <section className="scheduler-comparison">
+        <div className="scheduler-heading">
+          <div>
+            <p className="section-eyebrow">SCHEDULER ENGINE</p>
+            <h2>Scheduling Policy Comparison</h2>
+          </div>
+          <span className="scheduler-status">Awaiting results</span>
+        </div>
+        <p className="scheduler-note">
+          Run the scheduler results script to load FCFS and Priority metrics.
+        </p>
       </section>
     );
   }
 
-  const fcfs = data.results.fcfs;
-  const priority = data.results.priority;
+const fcfs = data.results.fcfs;
+const priority = data.results.priority;
 
-  const formatWait = (seconds) =>
-    `${Number(seconds).toLocaleString(undefined, {
-      maximumFractionDigits: 2,
-    })} s`;
+  const emergencyReduction =
+    fcfs.emergency_average_wait_sec > 0
+      ? ((fcfs.emergency_average_wait_sec -
+          priority.emergency_average_wait_sec) /
+          fcfs.emergency_average_wait_sec) *
+        100
+      : 0;
 
   const metrics = [
-    ["Average wait", "average_wait_sec", formatWait],
-    ["Maximum wait", "maximum_wait_sec", formatWait],
-    ["Emergency average wait", "emergency_average_wait_sec", formatWait],
-    ["Non-emergency average wait", "non_emergency_average_wait_sec", formatWait],
-    ["Throughput", "throughput_flights_per_hour", (v) => `${v} flights/hr`],
-    ["Runway utilization", "runway_utilization_percent", (v) => `${v}%`],
+    {
+      label: "Average wait",
+      fcfs: fcfs.average_wait_sec,
+      priority: priority.average_wait_sec,
+      unit: "sec",
+      lower: true,
+    },
+    {
+      label: "Maximum wait",
+      fcfs: fcfs.maximum_wait_sec,
+      priority: priority.maximum_wait_sec,
+      unit: "sec",
+      lower: true,
+    },
+    {
+      label: "Throughput",
+      fcfs: fcfs.throughput_flights_per_hour,
+      priority: priority.throughput_flights_per_hour,
+      unit: "flights/hr",
+      lower: false,
+    },
+    {
+      label: "Runway utilization",
+      fcfs: fcfs.runway_utilization_percent,
+      priority: priority.runway_utilization_percent,
+      unit: "%",
+      lower: false,
+    },
   ];
 
+  const formatNumber = (value) =>
+    Number(value).toLocaleString("en-US", {
+      maximumFractionDigits: 2,
+    });
+
   return (
-    <section className="section">
-      <div className="section-heading">
+    <section className="scheduler-comparison">
+      <div className="scheduler-heading">
         <div>
-          <p className="eyebrow">SIMULATION RESULTS</p>
-          <h2>Scheduler Comparison</h2>
-          <p>{data.scenario}</p>
+          <p className="section-eyebrow">SCHEDULER ENGINE</p>
+          <h2>Scheduling Policy Comparison</h2>
+          <p className="scheduler-subtitle">
+            First-Come, First-Served vs Priority scheduling
+          </p>
+        </div>
+        <span className="scheduler-status">Simulation results</span>
+      </div>
+
+      <div className="scheduler-hero">
+        <div className="scheduler-hero-copy">
+          <span className="scheduler-hero-label">
+            EMERGENCY AVERAGE WAIT REDUCTION
+          </span>
+          <div className="scheduler-hero-value">
+            {formatNumber(emergencyReduction)}%
+          </div>
+          <p>
+            {formatNumber(fcfs.emergency_average_wait_sec)} sec
+            <span className="scheduler-arrow"> → </span>
+            {formatNumber(priority.emergency_average_wait_sec)} sec
+          </p>
+        </div>
+        <div className="scheduler-hero-side">
+          <span>Emergency flights</span>
+          <strong>{formatNumber(priority.emergency_count)}</strong>
+          <small>in this test workload</small>
         </div>
       </div>
 
-      <p>{data.warning}</p>
-
-      <div className="metrics-grid">
-        {metrics.map(([label, key, format]) => (
-          <div className="metric-card" key={key}>
-            <span>{label}</span>
-            <p>FCFS</p>
-            <strong>{format(fcfs[key])}</strong>
-            <p>Priority</p>
-            <strong>{format(priority[key])}</strong>
+      <div className="scheduler-policy-grid">
+        <article className="scheduler-policy-card">
+          <div className="scheduler-policy-top">
+            <span className="scheduler-policy-dot fcfs-dot" />
+            <h3>FCFS</h3>
+            <span className="scheduler-policy-tag">Baseline</span>
           </div>
-        ))}
+          <p>First-Come, First-Served</p>
+          <div className="scheduler-policy-number">
+            {formatNumber(fcfs.average_wait_sec)}
+            <span> sec avg wait</span>
+          </div>
+          <div className="scheduler-policy-footer">
+            <span>Throughput</span>
+            <strong>
+              {formatNumber(fcfs.throughput_flights_per_hour)} flights/hr
+            </strong>
+          </div>
+        </article>
+
+        <article className="scheduler-policy-card priority-card">
+          <div className="scheduler-policy-top">
+            <span className="scheduler-policy-dot priority-dot" />
+            <h3>Priority</h3>
+            <span className="scheduler-policy-tag">Emergency-aware</span>
+          </div>
+          <p>Priority-based scheduling</p>
+          <div className="scheduler-policy-number">
+            {formatNumber(priority.average_wait_sec)}
+            <span> sec avg wait</span>
+          </div>
+          <div className="scheduler-policy-footer">
+            <span>Throughput</span>
+            <strong>
+              {formatNumber(priority.throughput_flights_per_hour)} flights/hr
+            </strong>
+          </div>
+        </article>
       </div>
 
-      <div className="info-card">
-        <h3>Emergency response</h3>
+      <div className="scheduler-metrics">
+        <h3>Performance breakdown</h3>
+        {metrics.map((metric) => {
+          const maxValue = Math.max(metric.fcfs, metric.priority, 1);
+
+          return (
+            <div className="scheduler-metric" key={metric.label}>
+              <div className="scheduler-metric-heading">
+                <span>{metric.label}</span>
+                <div>
+                  <span>FCFS: {formatNumber(metric.fcfs)} {metric.unit}</span>
+                  <span>
+                    Priority: {formatNumber(metric.priority)} {metric.unit}
+                  </span>
+                </div>
+              </div>
+              <div className="scheduler-bar-row">
+                <span className="scheduler-bar-label">FCFS</span>
+                <div className="scheduler-bar-track">
+                  <div
+                    className="scheduler-bar fcfs-bar"
+                    style={{ width: `${(metric.fcfs / maxValue) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div className="scheduler-bar-row">
+                <span className="scheduler-bar-label">Priority</span>
+                <div className="scheduler-bar-track">
+                  <div
+                    className="scheduler-bar priority-bar"
+                    style={{
+                      width: `${(metric.priority / maxValue) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="scheduler-insight">
+        <strong>What this test shows</strong>
         <p>
-          FCFS emergency average wait:{" "}
-          <strong>{formatWait(fcfs.emergency_average_wait_sec)}</strong>
-        </p>
-        <p>
-          Priority emergency average wait:{" "}
-          <strong>{formatWait(priority.emergency_average_wait_sec)}</strong>
-        </p>
-        <p>
-          Emergency flights in this test: {priority.emergency_count}
+          Priority scheduling sharply reduced emergency waiting time in this
+          congested synthetic workload, while average waiting time for all
+          flights increased. Throughput and runway utilization were similar.
         </p>
       </div>
+
+      <p className="scheduler-disclaimer">
+        Experimental simulation only — 500 requests clustered at one time.
+        Results do not establish real-world airport safety or performance.
+      </p>
     </section>
   );
 }
@@ -842,10 +971,9 @@ function App() {
 
           <div className="info-card">
             <p className="eyebrow">SCHEDULER</p>
-            <h3>Awaiting Core Engine</h3>
+            <h3>C++ scheduler integrated</h3>
             <p>
-              FCFS, Priority, Aging and multi-runway scheduling
-              will appear here after integration.
+FCFS and Priority scheduling compared using a congested synthetic workload.
             </p>
           </div>
         </section>
