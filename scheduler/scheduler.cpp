@@ -9,8 +9,14 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <cmath>
 
 using namespace std;
+
+static constexpr long long AGEING_INTERVAL_SECONDS = 300;
+static constexpr int AGEING_BONUS_PER_INTERVAL = 1;
+static constexpr long long STARVATION_WARNING_SECONDS = 1800;
+
 
 struct Flight {
     string flightId;
@@ -26,6 +32,22 @@ struct Flight {
     int emergencyScore = 0;
     bool emergency = false;
 };
+
+static int effectivePriority(const Flight& f, long long waitSeconds) {
+    const long long intervals =
+        max(0LL, waitSeconds) / AGEING_INTERVAL_SECONDS;
+
+    const long long bonus =
+        intervals * AGEING_BONUS_PER_INTERVAL;
+
+    // Aging continues beyond EFFECTIVE_PRIORITY_CAP.
+    const long long effective =
+        static_cast<long long>(f.priority) + bonus;
+
+    return static_cast<int>(
+        min(effective,
+            static_cast<long long>(numeric_limits<int>::max())));
+}
 
 struct ScheduledFlight {
     Flight flight;
@@ -114,7 +136,23 @@ static int toInt(const string& s, int fallback = 0) {
         return fallback;
     }
 }
+static int toDurationSeconds(const string& s) {
+    try {
+        if (trim(s).empty()) return 1;
 
+        double value = stod(trim(s));
+
+        if (!isfinite(value) || value <= 0 || value > 2147483647.0) {
+            throw runtime_error("Invalid occupancy duration: " + s);
+        }
+
+        return max(1, static_cast<int>(ceil(value)));
+    } catch (const invalid_argument&) {
+        throw runtime_error("Invalid occupancy duration: " + s);
+    } catch (const out_of_range&) {
+        throw runtime_error("Occupancy duration out of range: " + s);
+    }
+}
 static bool toBool(const string& s) {
     string v = lowerCopy(trim(s));
     return v == "true" || v == "1" || v == "yes";
@@ -164,7 +202,8 @@ static vector<Flight> loadFlights(const string& filename) {
         f.operation = getField(row, headers, "operation", "unknown");
         f.aircraftType = getField(row, headers, "aircraft_type", "Unknown");
         f.observedRunway = getField(row, headers, "observed_runway", "");
-        f.duration = max(1, toInt(getField(row, headers, "occupancy_sec"), 1));
+        f.duration = toDurationSeconds(
+    getField(row, headers, "occupancy_sec", "1"));
         f.priority = toInt(getField(row, headers, "priority"), 0);
         f.fuelScore = toInt(getField(row, headers, "fuel_score"), 0);
         f.emergencyScore = toInt(getField(row, headers, "emergency_score"), 0);
@@ -226,9 +265,10 @@ static int priorityScore(const Flight& f) {
     // use the workload's priority, then emergency/fuel scores as tie-breakers.
     return f.priority;
 }
+static vector<ScheduledFlight> scheduleFlights(
+    const vector<Flight>& flights,
+    const string& algorithm) {
 
-static vector<ScheduledFlight> scheduleFlights(const vector<Flight>& flights,
-                                                const string& algorithm) {
     vector<Runway> runways = collectRunways(flights);
     vector<bool> done(flights.size(), false);
     vector<ScheduledFlight> schedule;
@@ -237,12 +277,16 @@ static vector<ScheduledFlight> scheduleFlights(const vector<Flight>& flights,
     while (schedule.size() < flights.size()) {
         long long earliestStart = numeric_limits<long long>::max();
 
-        // Find the earliest possible start across every pending flight/runway pair.
+        // Find the earliest feasible start time.
         for (size_t i = 0; i < flights.size(); ++i) {
             if (done[i]) continue;
+
             for (const Runway& runway : runways) {
                 if (!eligibleFor(flights[i], runway.name)) continue;
-                long long start = max(flights[i].requestTime, runway.availableAt);
+
+                long long start =
+                    max(flights[i].requestTime, runway.availableAt);
+
                 earliestStart = min(earliestStart, start);
             }
         }
@@ -250,38 +294,86 @@ static vector<ScheduledFlight> scheduleFlights(const vector<Flight>& flights,
         int bestFlight = -1;
         int bestRunway = -1;
 
-        // Choose among pairs that can start at that earliest time.
         for (size_t i = 0; i < flights.size(); ++i) {
             if (done[i]) continue;
+
             for (size_t r = 0; r < runways.size(); ++r) {
                 if (!eligibleFor(flights[i], runways[r].name)) continue;
-                long long start = max(flights[i].requestTime, runways[r].availableAt);
+
+                long long start =
+                    max(flights[i].requestTime, runways[r].availableAt);
+
                 if (start != earliestStart) continue;
 
-                bool choose = bestFlight == -1;
-                if (!choose && algorithm == "priority") {
+                bool choose = (bestFlight == -1);
+
+                if (!choose &&
+                    (algorithm == "priority" || algorithm == "dynamic")) {
+
                     const Flight& candidate = flights[i];
                     const Flight& current = flights[bestFlight];
+
+                    // Emergency flights retain precedence.
                     if (candidate.emergency != current.emergency) {
                         choose = candidate.emergency;
-                    } else if (priorityScore(candidate) != priorityScore(current)) {
-                        choose = priorityScore(candidate) > priorityScore(current);
-                    } else if (candidate.emergencyScore != current.emergencyScore) {
-                        choose = candidate.emergencyScore > current.emergencyScore;
-                    } else if (candidate.fuelScore != current.fuelScore) {
-                        choose = candidate.fuelScore > current.fuelScore;
-                    } else if (candidate.requestTime != current.requestTime) {
-                        choose = candidate.requestTime < current.requestTime;
                     } else {
-                        choose = candidate.flightId < current.flightId;
+                        const long long candidateWait =
+                            max(0LL, earliestStart - candidate.requestTime);
+                        const long long currentWait =
+                            max(0LL, earliestStart - current.requestTime);
+
+                        // Starvation prevention applies to dynamic mode.
+                        const bool candidateStarving =
+                            algorithm == "dynamic" &&
+                            candidateWait >= STARVATION_WARNING_SECONDS;
+
+                        const bool currentStarving =
+                            algorithm == "dynamic" &&
+                            currentWait >= STARVATION_WARNING_SECONDS;
+
+                        if (candidateStarving != currentStarving) {
+    // Dynamic mode gives priority to a flight that has
+    // crossed the starvation threshold.
+    choose = candidateStarving;
+} else {
+    const int candidatePriority =
+        algorithm == "dynamic"
+            ? effectivePriority(candidate, candidateWait)
+            : priorityScore(candidate);
+
+    const int currentPriority =
+        algorithm == "dynamic"
+            ? effectivePriority(current, currentWait)
+            : priorityScore(current);
+
+    if (candidatePriority != currentPriority) {
+        choose = candidatePriority > currentPriority;
+    } else if (
+        candidate.emergencyScore != current.emergencyScore) {
+        choose = candidate.emergencyScore >
+                 current.emergencyScore;
+    } else if (
+        candidate.fuelScore != current.fuelScore) {
+        choose = candidate.fuelScore > current.fuelScore;
+    } else if (
+        candidate.requestTime != current.requestTime) {
+        choose = candidate.requestTime < current.requestTime;
+    } else {
+        choose = candidate.flightId < current.flightId;
+    }
+}
                     }
                 } else if (!choose) {
+                    // FCFS ordering remains unchanged.
                     const Flight& candidate = flights[i];
                     const Flight& current = flights[bestFlight];
+
                     if (candidate.requestTime != current.requestTime) {
-                        choose = candidate.requestTime < current.requestTime;
+                        choose =
+                            candidate.requestTime < current.requestTime;
                     } else {
-                        choose = candidate.flightId < current.flightId;
+                        choose =
+                            candidate.flightId < current.flightId;
                     }
                 }
 
@@ -293,13 +385,16 @@ static vector<ScheduledFlight> scheduleFlights(const vector<Flight>& flights,
         }
 
         if (bestFlight < 0 || bestRunway < 0) {
-            throw runtime_error("Scheduler could not find a feasible flight/runway assignment.");
+            throw runtime_error(
+                "Scheduler could not find a feasible flight/runway assignment.");
         }
 
         const Flight& f = flights[bestFlight];
         Runway& runway = runways[bestRunway];
-        long long start = max(f.requestTime, runway.availableAt);
-        long long finish = start + f.duration;
+
+        const long long start =
+            max(f.requestTime, runway.availableAt);
+        const long long finish = start + f.duration;
 
         ScheduledFlight result;
         result.flight = f;
@@ -307,6 +402,7 @@ static vector<ScheduledFlight> scheduleFlights(const vector<Flight>& flights,
         result.startTime = start;
         result.finishTime = finish;
         result.waitSeconds = start - f.requestTime;
+
         schedule.push_back(result);
 
         runway.availableAt = finish;
@@ -316,18 +412,52 @@ static vector<ScheduledFlight> scheduleFlights(const vector<Flight>& flights,
     return schedule;
 }
 
-static void printTime(long long seconds) {
-    long long hours = seconds / 3600;
-    long long minutes = (seconds % 3600) / 60;
-    long long secs = seconds % 60;
-    cout << setfill('0') << setw(2) << hours << ":"
-         << setw(2) << minutes << ":" << setw(2) << secs
-         << setfill(' ');
+static bool validateSchedule(const vector<ScheduledFlight>& schedule) {
+    for (const auto& item : schedule) {
+        if (item.startTime < item.flight.requestTime) {
+            cerr << "ERROR: Flight " << item.flight.flightId
+                 << " starts before its request time.\n";
+            return false;
+        }
+
+        if (item.finishTime < item.startTime ||
+            item.finishTime - item.startTime != item.flight.duration) {
+            cerr << "ERROR: Invalid finish time for flight "
+                 << item.flight.flightId << ".\n";
+            return false;
+        }
+
+        if (!eligibleFor(item.flight, item.assignedRunway)) {
+            cerr << "ERROR: Flight " << item.flight.flightId
+                 << " assigned to an ineligible runway.\n";
+            return false;
+        }
+    }
+
+    for (size_t i = 0; i < schedule.size(); ++i) {
+        for (size_t j = i + 1; j < schedule.size(); ++j) {
+            if (schedule[i].assignedRunway ==
+                    schedule[j].assignedRunway &&
+                schedule[i].startTime < schedule[j].finishTime &&
+                schedule[j].startTime < schedule[i].finishTime) {
+                cerr << "ERROR: Runway overlap between "
+                     << schedule[i].flight.flightId << " and "
+                     << schedule[j].flight.flightId << ".\n";
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 static void printResults(const vector<ScheduledFlight>& results,
                          const string& algorithm,
                          const vector<Flight>& allFlights) {
+                            if (results.empty()) {
+    cout << "\nNo flights were scheduled for " << algorithm << ".\n";
+    return;
+                            }
     long long totalWait = 0;
     long long emergencyWait = 0;
     long long emergencyMaxWait = 0;
@@ -340,7 +470,7 @@ static void printResults(const vector<ScheduledFlight>& results,
     long long firstStart = numeric_limits<long long>::max();
     long long lastFinish = 0;
     long long totalOccupancy = 0;
-
+    long long starvationWarnings = 0;
     for (const auto& item : results) {
         totalWait += item.waitSeconds;
         maxWait = max(maxWait, item.waitSeconds);
@@ -356,21 +486,28 @@ static void printResults(const vector<ScheduledFlight>& results,
             normalWait += item.waitSeconds;
             normalMaxWait = max(normalMaxWait, item.waitSeconds);
         }
+        if (item.waitSeconds > STARVATION_WARNING_SECONDS) {
+        ++starvationWarnings;
+    }
     }
 
-    long long makespan = max(1LL, lastFinish - min(firstStart, 0LL));
+    long long makespan = max(1LL, lastFinish);
     vector<Runway> runways = collectRunways(allFlights);
     double utilization = 100.0 * static_cast<double>(totalOccupancy) /
                          (static_cast<double>(makespan) * runways.size());
 
-    cout << "\n========== " << (algorithm == "fcfs" ? "FCFS" : "PRIORITY")
+    cout << "\n========== " << (algorithm == "fcfs" ? "FCFS" :
+algorithm == "dynamic" ? "DYNAMIC" : "PRIORITY")
          << " RESULTS ==========\n";
     cout << "Flights scheduled: " << results.size() << "\n";
-    cout << "Runways used/eligible: " << runways.size() << "\n";
+    cout << "Eligible runways: " << runways.size() << "\n";
     cout << fixed << setprecision(2);
     cout << "Average waiting time: "
          << static_cast<double>(totalWait) / results.size() << " sec\n";
     cout << "Maximum waiting time: " << maxWait << " sec\n";
+    cout << "Flights exceeding starvation warning threshold ("
+     << STARVATION_WARNING_SECONDS << " sec): "
+     << starvationWarnings << "\n";
         if (emergencyCount > 0) {
         cout << "Emergency flights: " << emergencyCount << "\n";
         cout << "Emergency average wait: "
@@ -391,6 +528,7 @@ static void printResults(const vector<ScheduledFlight>& results,
     cout << "Aggregate runway utilization: " << utilization << "%\n\n";
 
     cout << "Flight,Operation,Runway,Request(s),Start(s),Finish(s),Wait(s),Duration(s),Priority,Emergency\n";
+    
     for (const auto& item : results) {
         cout << '"' << item.flight.flightNumber << "\","
              << '"' << item.flight.operation << "\","
@@ -408,30 +546,51 @@ static void printResults(const vector<ScheduledFlight>& results,
 int main(int argc, char* argv[]) {
     if (argc < 2 || argc > 3) {
         cerr << "Usage: " << argv[0]
-             << " <workload.csv> [fcfs|priority|both]\n";
+     << " <workload.csv> [fcfs|priority|dynamic|both|all]\n";
         cerr << "Example: " << argv[0]
              << " data/processed/workloads/medium_workload.csv both\n";
         return 1;
     }
 
     string algorithm = (argc == 3) ? lowerCopy(argv[2]) : "both";
-    if (algorithm != "fcfs" && algorithm != "priority" && algorithm != "both") {
-        cerr << "Algorithm must be fcfs, priority, or both.\n";
+
+    if (algorithm != "fcfs" &&
+        algorithm != "priority" &&
+        algorithm != "dynamic" &&
+        algorithm != "both" && 
+    algorithm != "all") {
+        cerr << "Algorithm must be fcfs, priority, dynamic, or both.\n";
         return 1;
     }
 
     try {
         vector<Flight> flights = loadFlights(argv[1]);
-        cout << "Loaded " << flights.size() << " flights from " << argv[1] << "\n";
 
-        if (algorithm == "fcfs" || algorithm == "both") {
-            auto results = scheduleFlights(flights, "fcfs");
-            printResults(results, "fcfs", flights);
-        }
-        if (algorithm == "priority" || algorithm == "both") {
-            auto results = scheduleFlights(flights, "priority");
-            printResults(results, "priority", flights);
-        }
+        cout << "Loaded " << flights.size()
+             << " flights from " << argv[1] << "\n";
+
+        if (algorithm == "fcfs" ||
+    algorithm == "both" ||
+    algorithm == "all") {
+    auto results = scheduleFlights(flights, "fcfs");
+if (!validateSchedule(results)) return 1;
+printResults(results, "fcfs", flights);
+}
+
+if (algorithm == "priority" ||
+    algorithm == "both" ||
+    algorithm == "all") {
+    auto results = scheduleFlights(flights, "priority");
+    if (!validateSchedule(results)) return 1;
+printResults(results, "priority", flights);
+}
+
+if (algorithm == "dynamic" || algorithm == "all") {
+    auto results = scheduleFlights(flights, "dynamic");
+    if (!validateSchedule(results)) return 1;
+printResults(results, "dynamic", flights);
+}
+
     } catch (const exception& e) {
         cerr << "Scheduler error: " << e.what() << "\n";
         return 1;

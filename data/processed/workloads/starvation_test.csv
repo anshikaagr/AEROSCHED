@@ -1,0 +1,12 @@
+flight_id,flt_id,operation,aircraft_type,observed_runway,eligible_runways,request_time,occupancy_sec,priority,fuel_score,emergency_score,emergency
+F01,F01,departure,Heavy,RWY1,RWY1,2026-07-01 10:00:00,600,1,2,1,false
+F02,F02,arrival,Medium,RWY1,RWY1,2026-07-01 10:00:10,300,10,2,1,false
+F03,F03,arrival,Medium,RWY1,RWY1,2026-07-01 10:00:20,300,10,2,1,false
+F04,F04,arrival,Medium,RWY1,RWY1,2026-07-01 10:00:30,300,10,2,1,false
+F05,F05,arrival,Medium,RWY1,RWY1,2026-07-01 10:00:40,300,10,2,1,false
+F06,F06,arrival,Medium,RWY1,RWY1,2026-07-01 10:00:50,300,10,2,1,false
+F07,F07,arrival,Medium,RWY1,RWY1,2026-07-01 10:01:00,300,10,2,1,false
+F08,F08,arrival,Medium,RWY1,RWY1,2026-07-01 10:01:10,300,10,2,1,false
+F09,F09,arrival,Medium,RWY1,RWY1,2026-07-01 10:01:20,300,10,2,1,false
+F10,F10,arrival,Medium,RWY1,RWY1,2026-07-01 10:01:30,300,10,2,1,false
+F11,F11,departure,Light,RWY1,RWY1,2026-07-01 10:01:40,300,1,2,1,false

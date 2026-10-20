@@ -1,0 +1,9 @@
+flight_id,flt_id,icao24,operation,observed_entry_time,observed_exit_time,occupancy_sec,aircraft_type,aircraft_class,operator,simulated_pre_request_wait_sec,request_time,fuel_urgency,emergency,fuel_score,emergency_score,priority,observed_runway,eligible_runways
+1001,TEST01,TEST01,departure,2026-07-01 10:00:00,2026-07-01 10:05:00,300,,,,0,2026-07-01 10:00:00,normal,False,0,0,1,RWY1,RWY1
+1002,TEST02,TEST02,departure,2026-07-01 10:00:00,2026-07-01 10:05:00,300,,,,0,2026-07-01 10:00:00,normal,False,0,0,50,RWY1,RWY1
+1003,TEST03,TEST03,departure,2026-07-01 10:00:00,2026-07-01 10:05:00,300,,,,0,2026-07-01 10:00:00,normal,False,0,0,10,RWY1,RWY1
+1004,TEST04,TEST04,departure,2026-07-01 10:00:00,2026-07-01 10:05:00,300,,,,0,2026-07-01 10:00:00,normal,False,0,0,20,RWY1,RWY1
+1005,TEST05,TEST05,departure,2026-07-01 10:00:00,2026-07-01 10:05:00,300,,,,0,2026-07-01 10:00:00,normal,False,0,0,5,RWY1,RWY1
+1006,TEST06,TEST06,departure,2026-07-01 10:00:00,2026-07-01 10:05:00,300,,,,0,2026-07-01 10:00:00,normal,False,0,0,30,RWY1,RWY1
+1007,TEST07,TEST07,departure,2026-07-01 10:00:00,2026-07-01 10:05:00,300,,,,0,2026-07-01 10:00:00,normal,False,0,0,15,RWY1,RWY1
+1008,TEST08,TEST08,departure,2026-07-01 10:00:00,2026-07-01 10:05:00,300,,,,0,2026-07-01 10:00:00,normal,True,0,100,2,RWY1,RWY1

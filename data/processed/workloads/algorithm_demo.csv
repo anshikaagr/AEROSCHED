@@ -1,0 +1,5 @@
+flight_id,flt_id,operation,aircraft_type,observed_runway,eligible_runways,request_time,occupancy_sec,priority,fuel_score,emergency_score,emergency
+BLOCKER,BLOCKER,departure,Heavy,RWY1,RWY1,2026-07-01 10:00:00,3600,1,0,0,false
+FLIGHT_A,FLIGHT_A,departure,Medium,RWY1,RWY1,2026-07-01 10:00:01,300,1,0,0,false
+FLIGHT_B,FLIGHT_B,departure,Medium,RWY1,RWY1,2026-07-01 10:10:00,300,5,0,0,false
+FLIGHT_C,FLIGHT_C,departure,Medium,RWY1,RWY1,2026-07-01 10:20:00,300,7,0,0,false
