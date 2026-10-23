@@ -25,6 +25,17 @@
       "non_emergency_maximum_wait_sec": 10480.0,
       "throughput_flights_per_hour": 170.29,
       "runway_utilization_percent": 99.62
+    },
+    "dynamic": {
+      "average_wait_sec": 5073.92,
+      "maximum_wait_sec": 10480.0,
+      "emergency_count": 7.0,
+      "emergency_average_wait_sec": 17.86,
+      "emergency_maximum_wait_sec": 40.0,
+      "non_emergency_average_wait_sec": 5145.71,
+      "non_emergency_maximum_wait_sec": 10480.0,
+      "throughput_flights_per_hour": 170.29,
+      "runway_utilization_percent": 99.62
     }
   }
 }

@@ -1122,3 +1122,17 @@ nav {
     grid-template-columns: 1fr;
   }
 }
+
+/* Dynamic Priority — match existing scheduler policy styling */
+.scheduler-policy-card.dynamic-card {
+  /* Inherit the same card layout and spacing */
+  min-width: 0;
+}
+
+.scheduler-policy-dot.dynamic-dot {
+  background: #8b5cf6;
+}
+
+.scheduler-bar.dynamic-bar {
+  background: #8b5cf6;
+}

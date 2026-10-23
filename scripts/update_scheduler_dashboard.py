@@ -14,7 +14,7 @@ if not WORKLOAD.exists():
     raise SystemExit(f"Test workload not found: {WORKLOAD}")
 
 result = subprocess.run(
-    [str(BINARY), str(WORKLOAD), "both"],
+    [str(BINARY), str(WORKLOAD), "all"],
     cwd=ROOT,
     capture_output=True,
     text=True,
@@ -26,7 +26,7 @@ if result.returncode != 0:
 
 raw = result.stdout
 headers = list(re.finditer(
-    r"(?im)^.*\b(FCFS|PRIORITY)\b.*\bRESULTS\b.*$",
+    r"(?im)^.*\b(FCFS|PRIORITY|DYNAMIC)\b.*\bRESULTS\b.*$",
     raw
 ))
 
@@ -86,8 +86,8 @@ for i, header in enumerate(headers):
 
     results[name.lower()] = metrics
 
-if "fcfs" not in results or "priority" not in results:
-    raise SystemExit("Both FCFS and Priority results are required.")
+if not all(name in results for name in ("fcfs", "priority", "dynamic")):
+    raise SystemExit("FCFS, Priority, and Dynamic results are required.")
 
 payload = {
     "title": "Scheduler Comparison",

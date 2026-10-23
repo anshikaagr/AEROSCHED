@@ -594,8 +594,14 @@ function AlertsPage({ flights }) {
 }
 
 
+
 function SchedulerComparison({ data }) {
-  if (!data?.results?.fcfs || !data?.results?.priority) {
+  const results = data?.results;
+  const fcfs = results?.fcfs;
+  const priority = results?.priority;
+  const dynamic = results?.dynamic;
+
+  if (!fcfs || !priority || !dynamic) {
     return (
       <section className="scheduler-comparison">
         <div className="scheduler-heading">
@@ -606,49 +612,49 @@ function SchedulerComparison({ data }) {
           <span className="scheduler-status">Awaiting results</span>
         </div>
         <p className="scheduler-note">
-          Run the scheduler results script to load FCFS and Priority metrics.
+          Run the scheduler results script to load FCFS, Priority, and
+          Dynamic Priority metrics.
         </p>
       </section>
     );
   }
 
-  const fcfs = data.results.fcfs;
-  const priority = data.results.priority;
+  const policies = [
+    { key: "fcfs", label: "FCFS", name: "First-Come, First-Served" },
+    { key: "priority", label: "Priority", name: "Priority-based scheduling" },
+    { key: "dynamic", label: "Dynamic Priority", name: "Priority with aging" },
+  ];
 
   const emergencyReduction =
     fcfs.emergency_average_wait_sec > 0
       ? ((fcfs.emergency_average_wait_sec -
-        priority.emergency_average_wait_sec) /
-        fcfs.emergency_average_wait_sec) *
-      100
+          priority.emergency_average_wait_sec) /
+          fcfs.emergency_average_wait_sec) *
+        100
       : 0;
 
   const metrics = [
     {
       label: "Average wait",
-      fcfs: fcfs.average_wait_sec,
-      priority: priority.average_wait_sec,
+      key: "average_wait_sec",
       unit: "sec",
       lower: true,
     },
     {
       label: "Maximum wait",
-      fcfs: fcfs.maximum_wait_sec,
-      priority: priority.maximum_wait_sec,
+      key: "maximum_wait_sec",
       unit: "sec",
       lower: true,
     },
     {
       label: "Throughput",
-      fcfs: fcfs.throughput_flights_per_hour,
-      priority: priority.throughput_flights_per_hour,
+      key: "throughput_flights_per_hour",
       unit: "flights/hr",
       lower: false,
     },
     {
       label: "Runway utilization",
-      fcfs: fcfs.runway_utilization_percent,
-      priority: priority.runway_utilization_percent,
+      key: "runway_utilization_percent",
       unit: "%",
       lower: false,
     },
@@ -666,7 +672,7 @@ function SchedulerComparison({ data }) {
           <p className="section-eyebrow">SCHEDULER ENGINE</p>
           <h2>Scheduling Policy Comparison</h2>
           <p className="scheduler-subtitle">
-            First-Come, First-Served vs Priority scheduling
+            FCFS vs Priority vs Dynamic Priority
           </p>
         </div>
         <span className="scheduler-status">Simulation results</span>
@@ -685,6 +691,7 @@ function SchedulerComparison({ data }) {
             <span className="scheduler-arrow"> → </span>
             {formatNumber(priority.emergency_average_wait_sec)} sec
           </p>
+          <small>FCFS compared with Priority</small>
         </div>
         <div className="scheduler-hero-side">
           <span>Emergency flights</span>
@@ -694,81 +701,78 @@ function SchedulerComparison({ data }) {
       </div>
 
       <div className="scheduler-policy-grid">
-        <article className="scheduler-policy-card">
-          <div className="scheduler-policy-top">
-            <span className="scheduler-policy-dot fcfs-dot" />
-            <h3>FCFS</h3>
-            <span className="scheduler-policy-tag">Baseline</span>
-          </div>
-          <p>First-Come, First-Served</p>
-          <div className="scheduler-policy-number">
-            {formatNumber(fcfs.average_wait_sec)}
-            <span> sec avg wait</span>
-          </div>
-          <div className="scheduler-policy-footer">
-            <span>Throughput</span>
-            <strong>
-              {formatNumber(fcfs.throughput_flights_per_hour)} flights/hr
-            </strong>
-          </div>
-        </article>
+        {policies.map((policy) => {
+          const item = results[policy.key];
 
-        <article className="scheduler-policy-card priority-card">
-          <div className="scheduler-policy-top">
-            <span className="scheduler-policy-dot priority-dot" />
-            <h3>Priority</h3>
-            <span className="scheduler-policy-tag">Emergency-aware</span>
-          </div>
-          <p>Priority-based scheduling</p>
-          <div className="scheduler-policy-number">
-            {formatNumber(priority.average_wait_sec)}
-            <span> sec avg wait</span>
-          </div>
-          <div className="scheduler-policy-footer">
-            <span>Throughput</span>
-            <strong>
-              {formatNumber(priority.throughput_flights_per_hour)} flights/hr
-            </strong>
-          </div>
-        </article>
+          return (
+            <article
+              className={`scheduler-policy-card ${policy.key}-card`}
+              key={policy.key}
+            >
+              <div className="scheduler-policy-top">
+                <span
+                  className={`scheduler-policy-dot ${policy.key}-dot`}
+                />
+                <h3>{policy.label}</h3>
+                <span className="scheduler-policy-tag">
+                  {policy.key === "fcfs"
+                    ? "Baseline"
+                    : policy.key === "priority"
+                    ? "Emergency-aware"
+                    : "Aging"}
+                </span>
+              </div>
+              <p>{policy.name}</p>
+              <div className="scheduler-policy-number">
+                {formatNumber(item.average_wait_sec)}
+                <span> sec avg wait</span>
+              </div>
+              <div className="scheduler-policy-footer">
+                <span>Throughput</span>
+                <strong>
+                  {formatNumber(item.throughput_flights_per_hour)} flights/hr
+                </strong>
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       <div className="scheduler-metrics">
         <h3>Performance breakdown</h3>
         {metrics.map((metric) => {
-          const maxValue = Math.max(metric.fcfs, metric.priority, 1);
+          const values = policies.map((policy) => ({
+            ...policy,
+            value: results[policy.key][metric.key],
+          }));
+          const maxValue = Math.max(...values.map((item) => item.value), 1);
 
           return (
             <div className="scheduler-metric" key={metric.label}>
               <div className="scheduler-metric-heading">
                 <span>{metric.label}</span>
                 <div>
-                  <span>FCFS: {formatNumber(metric.fcfs)} {metric.unit}</span>
-                  <span>
-                    Priority: {formatNumber(metric.priority)} {metric.unit}
-                  </span>
+                  {values.map((item) => (
+                    <span key={item.key}>
+                      {item.label}: {formatNumber(item.value)} {metric.unit}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <div className="scheduler-bar-row">
-                <span className="scheduler-bar-label">FCFS</span>
-                <div className="scheduler-bar-track">
-                  <div
-                    className="scheduler-bar fcfs-bar"
-                    style={{ width: `${(metric.fcfs / maxValue) * 100}%` }}
-                  />
+
+              {values.map((item) => (
+                <div className="scheduler-bar-row" key={item.key}>
+                  <span className="scheduler-bar-label">{item.label}</span>
+                  <div className="scheduler-bar-track">
+                    <div
+                      className={`scheduler-bar ${item.key}-bar`}
+                      style={{
+                        width: `${(item.value / maxValue) * 100}%`,
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="scheduler-bar-row">
-                <span className="scheduler-bar-label">Priority</span>
-                <div className="scheduler-bar-track">
-                  <div
-                    className="scheduler-bar priority-bar"
-                    style={{
-                      width: `${(metric.priority / maxValue) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
+              ))}
             </div>
           );
         })}
@@ -777,9 +781,10 @@ function SchedulerComparison({ data }) {
       <div className="scheduler-insight">
         <strong>What this test shows</strong>
         <p>
-          Priority scheduling sharply reduced emergency waiting time in this
-          congested synthetic workload, while average waiting time for all
-          flights increased. Throughput and runway utilization were similar.
+          Priority and Dynamic Priority are compared with FCFS using the same
+          congested synthetic workload. Dynamic Priority uses aging to increase
+          waiting flights' effective priority. Review the measured values to
+          determine whether aging changes the results for this workload.
         </p>
       </div>
 
@@ -790,6 +795,7 @@ function SchedulerComparison({ data }) {
     </section>
   );
 }
+
 
 function App() {
   const [data, setData] = useState(null);
