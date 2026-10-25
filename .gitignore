@@ -78,3 +78,27 @@ __pycache__/
 .venv/scheduler/aerosched
 node_modules/
 scheduler/aerosched
+
+# Python virtual environments
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Node dependencies
+node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local build output
+dist/
+build/
+
+# Compiled AeroSched executable
+scheduler/aerosched
+scheduler/aerosched.exe
